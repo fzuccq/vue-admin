@@ -7,10 +7,10 @@
         </li>
       </ul>
       <el-form
-        :model="ruleForm"
+        :model="loginForm"
         status-icon
         :rules="rules"
-        ref="ruleForm"
+        ref="loginForm"
         class="login-form"
         size="medium"
       >
@@ -19,7 +19,7 @@
           <el-input
             id="username"
             type="text"
-            v-model="ruleForm.username"
+            v-model="loginForm.username"
             autocomplete="off"
           ></el-input>
         </el-form-item>
@@ -28,7 +28,7 @@
           <el-input
             id="pass"
             type="password"
-            v-model="ruleForm.pass"
+            v-model="loginForm.pass"
             autocomplete="off"
             minlength="6"
             maxlength="20"
@@ -39,7 +39,7 @@
           <el-input
             id="checkPass"
             type="password"
-            v-model="ruleForm.checkPass"
+            v-model="loginForm.checkPass"
             autocomplete="off"
             minlength="6"
             maxlength="20"
@@ -49,14 +49,15 @@
           <label for="validCode">验证码</label>
           <el-row :gutter="10">
             <el-col :span="14"
-              ><el-input id="validCode" v-model.number="ruleForm.validCode"></el-input
+              ><el-input id="validCode" v-model="loginForm.validCode"></el-input
             ></el-col>
             <el-col :span="10"
               ><el-button
                 type="success"
+                :disabled="!codeButtonState.enabled"
                 @click="btnGetSms()"
                 class="block"
-                >获取验证码</el-button
+                >{{codeButtonState.text}}</el-button
               ></el-col
             >
           </el-row>
@@ -64,7 +65,7 @@
         <el-form-item>
           <el-button
             type="danger"
-            @click="submitForm('ruleForm')"
+            @click="submitForm('loginForm')"
             class="login-btn block"
             :disabled="loginButtonState"
             >{{register?"注册":"登录"}}</el-button
@@ -75,7 +76,8 @@
   </div>
 </template>
 <script>
-import {getSms} from '@/api/login';
+import sha1 from 'js-sha1';
+import {getSms,regUser,login} from '@/api/login';
 import { reactive,ref,onMounted, computed } from '@vue/composition-api'
 import {validateEmail,validatePassword,validateVCode,stripscript} from '@/utils/validate';
 export default {
@@ -92,24 +94,24 @@ export default {
     };
 
     let validatePass = (rule, value, callback) => {
-      ruleForm.pass=stripscript(value);
+      loginForm.pass=stripscript(value);
       if (value === "") {
         callback(new Error("请输入密码"));
       } else if(!validatePassword(value)){
         callback(new Error("密码为6至20位数字+字母"));
       } else {
-        if (ruleForm.checkPass !== "") {
-          refs.ruleForm.validateField("checkPass");
+        if (loginForm.checkPass !== "") {
+          refs.loginForm.validateField("checkPass");
         }
         callback();
       }
     };
     var validatePass2 = (rule, value, callback) => {
       if(!register) {callback();}
-      ruleForm.checkPass=stripscript(value);
+      loginForm.checkPass=stripscript(value);
       if (value === "") {
         callback(new Error("请再次输入密码"));
-      } else if (ruleForm.checkPass !== ruleForm.pass) {
+      } else if (loginForm.checkPass !== loginForm.pass) {
         callback(new Error("两次输入密码不一致!"));
       } else {
         callback();
@@ -128,6 +130,12 @@ export default {
     };
 
     const loginButtonState=ref(true);
+    const model=ref("login");
+    const codeButtonState=reactive({
+      enabled:true,
+      text:"获取验证码"
+    });
+    const timer=ref(null);
 
     // data数据，生命周期和自定义函数
     const menutabs=reactive([
@@ -143,7 +151,7 @@ export default {
       },
     ]);
 
-    const ruleForm= reactive({
+    const loginForm= reactive({
       username:"",
       pass: "",
       checkPass: "",
@@ -157,34 +165,129 @@ export default {
       validCode: [{ validator: validateCode, trigger: "blur" }],
     });
 
+    const updateCodeButtonStatus=((param)=>{
+      codeButtonState.enabled=param.enabled;
+      codeButtonState.text=param.text;
+    });
+
     const toggleMenutab=(tab=> {
       menutabs.forEach((item, index) => (item.selected = false));
       tab.selected = true;
-      resetForm("ruleForm");
+      model.value=tab.type;
+      resetForm("loginForm");
     });
 
     const btnGetSms=(()=>{
-      if(!ruleForm.username){
+      if(!loginForm.username){
         root.$message({
           message: '邮箱为空，不能获取验证码',
           type: 'warning'
         });
         return false;
       }
-      if(!validateEmail(ruleForm.username)){
+      if(!validateEmail(loginForm.username)){
         root.$message({
           message: '邮箱格式有误！！',
           type: 'warning'
         });
         return false;
       }
-      getSms({username:ruleForm.username,module:'login'});
+
+      updateCodeButtonStatus({
+        enabled:false,
+        text:"发送中"
+      });
+
+      getSms({username:loginForm.username,module:model.value}).then(response=>{
+        console.log(response);
+        let data=response.data;
+        if(data.resCode===0){
+          root.$message({
+            message:data.message,
+            type:"success"
+          });
+          loginButtonState.value=false;
+          countDown(60);
+        }
+      });
     });
+
+    const countDown=((number)=>{
+      if(timer.value){
+        clearInterval(timer.value);
+      }
+      let time=number;
+      timer.value=setInterval((number)=>{
+        time--;
+        if(time===0){
+          clearInterval(timer.value);
+          updateCodeButtonStatus({
+            enabled:true,
+            text:"再次获取"
+          });
+        }else{
+          updateCodeButtonStatus({
+            enabled:false,
+            text:`倒计时${time}秒`
+          });
+        }
+      },1000);
+    });
+
+    const clearCountDown=(()=>{
+      if(timer.value){
+        clearInterval(timer.value);
+      }
+      updateCodeButtonStatus({
+        enabled:true,
+        text:"获取验证码"
+      });
+    });
+
+    const userLogin=(()=>{
+      let reqData={
+        username:loginForm.username,
+        password:sha1(loginForm.pass),
+        code:loginForm.validCode,
+        module:"login"
+      };
+      login(reqData).then(response=>{
+        // let data=response.data;
+        // root.$message({
+        //   message:data.message,
+        //   type:"success"
+        // });
+        root.$router.push({name:"Console"});
+      }).catch(error=>{
+        console.log(error);
+      });
+    });
+
+    const userRegister=(()=>{
+      let reqData={
+        username:loginForm.username,
+        password:sha1(loginForm.pass),
+        code:loginForm.validCode,
+        module:"register"
+      };
+      regUser(reqData).then(response=>{
+        let data=response.data;
+        root.$message({
+          message:data.message,
+          type:"success"
+        });
+        toggleMenutab(menutabs[0]);
+        clearCountDown();
+      }).catch(error=>{
+        console.log(error);
+      });
+    });
+    
 
     const submitForm=(formName=> {
       refs[formName].validate((valid) => {
         if (valid) {
-          alert("submit!");
+          register.value?userRegister():userLogin();  
         } else {
           console.log("error submit!!");
           return false;
@@ -215,8 +318,9 @@ export default {
 
     return {
       loginButtonState,
+      codeButtonState,
       menutabs,
-      ruleForm,
+      loginForm,
       rules,
       toggleMenutab,
       submitForm,
@@ -230,7 +334,7 @@ export default {
   //   toggleMenutab(tab) {
   //     this.menutabs.forEach((item, index) => (item.selected = false));
   //     tab.selected = true;
-  //     this.resetForm("ruleForm");
+  //     this.resetForm("loginForm");
   //   },
   //   submitForm(formName) {
   //     this.$refs[formName].validate((valid) => {
