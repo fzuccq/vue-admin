@@ -1,5 +1,9 @@
 <template>
   <div id="nav-wrap">
+    <div class="logo">
+      <img src="../../../assets/images/logo.png" alt="">
+    </div>
+    
     <el-menu
       default-active="3"
       class="el-menu-vertical-demo"
@@ -14,7 +18,7 @@
       <template v-for="(item, index) in routers">
         <el-submenu v-if="!item.hidden" :key="item.id" :index="index + ''">
           <template slot="title">
-            <i class="el-icon-location"></i>
+            <svg-icon :iconClass="item.meta.icon" :className="item.meta.icon"/>
             <span slot="title">{{ item.meta.name }}</span>
           </template>
           <template v-for="subItem in item.children">
@@ -28,9 +32,11 @@
         </el-submenu>
       </template>
     </el-menu>
+    
   </div>
 </template>
 <script>
+
 import { reactive, ref, onMounted, computed } from "@vue/composition-api";
 export default {
   name: "navMenu",
@@ -38,7 +44,11 @@ export default {
     /**
      * 变量定义区
      */
-    const isCollapse = ref(false);
+    // const isCollapse = ref(false);
+    const isCollapse = computed(()=>{
+      return root.$store.state.app.isCollapse;
+    });
+
     const routers = reactive(root.$router.options.routes);
 
     /**
@@ -58,6 +68,15 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
+@import "../../../styles/config.scss";
+.logo {
+  text-align: center;
+  img {
+    margin:20px auto 25px;
+    width: 92px;
+    @include webkit(transition,all .3s ease 0s);
+  }
+}
 #nav-wrap {
   position: fixed;
   top: 0;
@@ -65,5 +84,28 @@ export default {
   width: $navmenuWidth;
   height: 100vh;
   background-color: #344a5f;
+  @include webkit(transition,all .3s ease 0s);
+
+  svg {
+    font-size: 20px;
+    margin-right: 10px;
+    color:#fff;
+  }
+}
+
+.open {
+  #nav-wrap {
+    width:$navmenuWidth;
+  }
+}
+
+.close {
+  #nav-wrap {
+    width:$navmenuMin;
+  }
+
+  .logo img {
+    width:70%;
+  }
 }
 </style>

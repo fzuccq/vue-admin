@@ -1,6 +1,9 @@
 <template>
   <div id="main-wrap">
-    <router-view />
+    <div class="content">
+      <router-view />
+    </div>
+    
   </div>
 </template>
 <script>
@@ -9,14 +12,34 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
+  @import "../../../styles/config.scss";
   #main-wrap {
-    position: fixed;
-    top:$headerHeight;
-    left:$navmenuWidth;
-    right:0;
-    bottom:0;
-    border:30px solid #f7f7f7;
-    border-bottom: none;
+    width:100%;
+    height:100vh;
+    padding-top:$headerHeight+30;
+    padding-left:$navmenuWidth+30;
+    padding-right:30px;
+    @include webkit(box-sizing,border-box);
+    @include webkit(transition,all .3s ease 0s);
+  }
+
+  .open {
+    #main-wrap {
+      padding-left:$navmenuWidth+30;
+    }
+  }
+
+  .close {
+    #main-wrap {
+      padding-left:$navmenuMin+30;
+    }
+  }
+
+  .content {
+    width:100%;
+    height:100%;
+    padding:30px;
     background-color: #fff;
+    @include webkit(box-sizing,border-box);
   }
 </style>

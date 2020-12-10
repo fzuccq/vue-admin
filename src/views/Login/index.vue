@@ -251,16 +251,22 @@ export default {
         code:loginForm.validCode,
         module:"login"
       };
-      login(reqData).then(response=>{
-        // let data=response.data;
-        // root.$message({
-        //   message:data.message,
-        //   type:"success"
-        // });
+      console.log(root.$store);
+      root.$store.dispatch("app/userLogin",reqData).then(response=>{
         root.$router.push({name:"Console"});
       }).catch(error=>{
         console.log(error);
       });
+      // login(reqData).then(response=>{
+      //   // let data=response.data;
+      //   // root.$message({
+      //   //   message:data.message,
+      //   //   type:"success"
+      //   // });
+      //   root.$router.push({name:"Console"});
+      // }).catch(error=>{
+      //   console.log(error);
+      // });
     });
 
     const userRegister=(()=>{

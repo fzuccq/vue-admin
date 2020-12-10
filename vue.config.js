@@ -10,6 +10,27 @@ module.exports = {
   indexPath: "index.html",
   // eslint-loader 是否在保存的时候检查
   lintOnSave: true,
+  chainWebpack: (config) => {
+    const svgRule = config.module.rule("svg");     
+    svgRule.uses.clear();     
+    svgRule
+    .use("svg-sprite-loader")
+    .loader("svg-sprite-loader")
+    .options({ 
+      symbolId: "icon-[name]",
+      include: ["./src/icons"] 
+    });
+  },
+  configureWebpack: (config) => {
+    config.resolve = { // 配置解析别名
+      extensions: ['.js', '.json', '.vue'],  // 自动添加文件名后缀
+      alias: {
+        'vue': 'vue/dist/vue.js',
+        '@': path.resolve(__dirname, './src'),
+        '@c': path.resolve(__dirname, './src/components')
+      }
+    }
+  },
   // 生产环境是否生成 sourceMap 文件
   productionSourceMap: false,
   // css相关配置
@@ -38,7 +59,7 @@ module.exports = {
     hotOnly: false, // hot 和 hotOnly 的区别是在某些模块不支持热更新的情况下，前者会自动刷新页面，后者不会刷新页面，而是在控制台输出热更新失败
     proxy: {
       "/devApi": {
-          target: "http://www.web-jshtml.cn/productapi", //API服务器的地址
+          target: "http://www.web-jshtml.cn/productapi/token", //API服务器的地址
           changeOrigin: true,
           pathRewrite: {
               "^/devApi": ''
